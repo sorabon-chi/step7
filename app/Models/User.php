@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -41,4 +42,15 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /**
+     * Store a user after registration data has been validated.
+     */
+    public static function registerUser(array $registration_data): self {
+        return static::create([
+            'name' => $registration_data['name'],
+            'email' => $registration_data['email'],
+            'password' => Hash::make($registration_data['password']),
+        ]);
+    }
 }
