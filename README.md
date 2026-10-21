@@ -114,4 +114,4 @@ PHPのSQLite拡張は、このコマンドの実行時だけ読み込みます�
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Laravelは[MITライセンス](https://opensource.org/licenses/MIT)で公開されているフレームワークです。
