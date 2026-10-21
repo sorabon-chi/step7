@@ -89,6 +89,34 @@ class ProductIndexTest extends DatabaseTestCase
         ]))->assertOk()->assertViewHas('products', fn ($products) => $products->total() === 2);
     }
 
+    public function testInitialListIncludesAllProductsAcrossPages(): void {
+        $first_company = $this->createCompany('メーカーA');
+        $second_company = $this->createCompany('メーカーB');
+        $expected_product_ids = [];
+        for ($product_number = 1; $product_number <= 12; $product_number++) {
+            $company = $product_number % 2 === 0 ? $first_company : $second_company;
+            $product = $this->createProduct($company, '商品' . $product_number);
+            $expected_product_ids[] = $product->id;
+        }
+        $this->actingAs($this->createUser());
+
+        $response = $this->get(route('products.index'))->assertOk();
+        $first_page = $response->viewData('products');
+        $this->assertSame(12, $first_page->total());
+        $this->assertSame(10, $first_page->perPage());
+        $this->assertSame(2, $first_page->lastPage());
+        $this->assertCount(10, $first_page->items());
+        $this->assertSame(
+            array_slice($expected_product_ids, 0, 10),
+            $first_page->getCollection()->pluck('id')->all()
+        );
+
+        $next_response = $this->get($first_page->nextPageUrl())->assertOk();
+        $last_page = $next_response->viewData('products');
+        $this->assertSame(12, $last_page->total());
+        $this->assertSame(array_slice($expected_product_ids, 10), $last_page->getCollection()->pluck('id')->all());
+    }
+
     public function testPaginationKeepsBothSearchConditions(): void {
         $company = $this->createCompany('メーカーA');
         for ($product_number = 1; $product_number <= 12; $product_number++) {

@@ -1,60 +1,63 @@
 # Step7 商品管理システム
 
-「Cy Tech Step7.pdf」を正式な仕様書として作成した、Laravel 9の商品管理システムです。
+「Cy Tech Step7.pdf」を仕様書とする、Laravel 9の商品管理システムです。
+構築手順は「システム構築手順 - システム構築手順.pdf」を参照しています。
 
 リポジトリ: <https://github.com/sorabon-chi/step7>
 
-## 実装機能
+## 機能
 
 - ユーザー新規登録、ログイン、ログアウト
-- 商品一覧表示、ページネーション
-- 商品名の部分一致検索、メーカー検索、両条件を組み合わせた検索
-- 商品詳細表示
-- 商品新規登録、編集、削除
-- 商品画像のアップロード、表示、差し替え
+- 商品一覧、商品名の部分一致検索、メーカー検索、複合検索
+- 商品の詳細表示、新規登録、編集、削除
+- 商品画像の保存、表示、差し替え
 
-Step8のソート機能は実装していません。
+一覧は検索条件がない場合に全商品を対象とし、10件ずつ表示します。
+売上から参照されている商品は削除できません。
+ソート機能はStep8の対象のため実装していません。
+仕様の解釈は[確認記録](docs/step7_verification.md)にまとめています。
 
-## 動作確認環境
+## 動作環境
 
-| 項目 | 確認環境 |
+| 項目 | 確認した環境 |
 | --- | --- |
 | OS・サーバー | Windows・MAMP |
 | Laravel | 9.52.22 |
 | PHP | 8.3.1 |
 | MySQL | 5.7.24 |
-| Apacheポート | 8888 |
-| MySQLポート | 8889 |
+| Apache / MySQLポート | 8888 / 8889 |
 
-PHP、Composer、Git、Node.js、npmを利用できる環境を使用します。
-依存パッケージのバージョンは`composer.lock`と`package-lock.json`に記録しています。
+PHP、Composer、Git、Node.js、npmが必要です。
+依存パッケージは`composer.lock`と`package-lock.json`に記録しています。
 
-## 構築済み環境での起動
+## 普段の起動
 
 1. MAMPのApacheとMySQLを起動します。
 2. <http://localhost:8888/step7/public/login> を開きます。
-3. 新規登録したアカウントでログインします。
+3. 登録済みのアカウントでログインします。
 
-確認したプロジェクトの配置先は`C:\MAMP\htdocs\step7`です。
-以下の初回セットアップを、構築済みの現在の環境でやり直す必要はありません。
+プロジェクトの配置先は`C:\MAMP\htdocs\step7`です。
+構築済みの環境では、次の初回構築手順を繰り返す必要はありません。
 
-## 新しい環境への初回セットアップ
+## 初回構築
 
-### 1. プロジェクトの取得
+以下は、新しい環境にリポジトリを取得するときだけ行う手順です。
 
-PowerShellでMAMPの`htdocs`に移動し、リポジトリを取得します。
+### 1. ファイルと依存パッケージを取得する
 
 ```powershell
 Set-Location C:\MAMP\htdocs
 git clone https://github.com/sorabon-chi/step7.git step7
 Set-Location .\step7
 composer install
+npm.cmd ci
 ```
 
-### 2. 環境設定
+### 2. 接続情報を設定する
 
-`.env`が存在しない場合だけ、ひな形から作成します。
-`key:generate`は、この新規環境の初回セットアップで実行します。
+MAMPのMySQLを起動し、phpMyAdminで空のデータベース`step7`を作成します。
+`.env`がない場合だけ、ひな形から作成します。
+新しい環境の初回構築時にアプリの鍵を生成します。
 
 ```powershell
 if (-not (Test-Path -LiteralPath '.env')) {
@@ -63,8 +66,7 @@ if (-not (Test-Path -LiteralPath '.env')) {
 php artisan key:generate
 ```
 
-MAMPのMySQLを起動し、phpMyAdminで空のデータベース`step7`を作成します。
-`.env`の接続設定を使用環境に合わせます。上記のMAMP環境での設定例は次のとおりです。
+`.env`の設定例です。ポートなどは使用する環境に合わせてください。
 
 ```dotenv
 APP_URL=http://localhost:8888/step7/public
@@ -74,60 +76,41 @@ DB_PORT=8889
 DB_DATABASE=step7
 ```
 
-`DB_USERNAME`と`DB_PASSWORD`は、自分のMySQL接続情報を設定します。
-パスワードや`APP_KEY`をREADMEに記載せず、`.env`もGitへ追加しません。
+`DB_USERNAME`・`DB_PASSWORD`には、使用環境のMySQL接続情報を設定します。
+パスワードや`APP_KEY`は公開せず、`.env`をGitへ追加しないでください。
 
-### 3. テーブル・初期データ・画像公開・画面資産の準備
+### 3. テーブル・画像公開先・画面資産を準備する
 
 ```powershell
 php artisan migrate --seed
 php artisan storage:link
-npm.cmd ci
 npm.cmd run build
 ```
 
-初期データはメーカーのCoca-Cola・サントリー・キリンの3件です。
-商品やユーザーは画面から登録します。
-画像の保存先は`storage/app/public`、公開先は`public/storage`です。
+メーカーの初期データはCoca-Cola・サントリー・キリンの3件です。
+商品とユーザーは画面から登録します。
+画像は`storage/app/public`へ保存し、`public/storage`を通して表示します。
 
 画像アップロードには、Apache側のPHPで`fileinfo`拡張が有効である必要があります。
-CLIとApacheでは使用する`php.ini`が異なる場合があります。
-今回のApacheは`C:\MAMP\conf\php8.3.1\php.ini`を使用しており、
-`extension=php_fileinfo.dll`を有効にしたあと、MAMPのサーバーを再起動して動作確認しました。
+CLIとApacheでは、使用する`php.ini`が異なる場合があります。
+上記環境のApache設定ファイルは`C:\MAMP\conf\php8.3.1\php.ini`です。
+設定を変更した場合はMAMPのサーバーを再起動します。
 
-セットアップ後、MAMPのApacheとMySQLを起動してログイン画面を開きます。
-
-## 主なファイル
-
-| 場所 | 内容 |
-| --- | --- |
-| `app/Models` | 商品・メーカー・売上・ユーザーのDB操作、トランザクション |
-| `app/Http/Controllers` | 認証と商品管理の画面遷移・処理の呼び出し |
-| `app/Http/Requests` | 検索・登録・編集時の入力チェック |
-| `resources/views` | Bladeの画面 |
-| `resources/sass`・`resources/js` | 外部CSS・JavaScriptのソース |
-| `database/migrations`・`database/seeders` | テーブル定義・メーカー初期データ |
-| `tests` | PHP・JavaScriptの自動テスト |
-
-`products`・`companies`・`sales`は仕様書のカラム定義に合わせています。
-`users`はLaravel標準のテーブルを使用します。
-
-## 動作確認
+## 自動テスト
 
 次のコマンドは、上記のMAMP・PHP 8.3.1環境での実行例です。
-PHPのテストでは、コマンド実行時だけSQLite拡張を読み込みます。
-データベースを使う自動テストはメモリ上のSQLiteを使用します。
 
 ```powershell
 php -d extension=C:\MAMP\bin\php\php8.3.1\ext\php_pdo_sqlite.dll vendor/bin/phpunit
 node --test tests/JavaScript/product_delete.test.cjs
 ```
 
-2026-10-09の自動テスト結果は、PHP 84件・672項目、JavaScript 4件すべて成功です。
-その後、ユーザーのブラウザ操作による商品登録・検索・詳細・編集・画像表示・削除・ログアウトも確認しました。
+PHPUnitはメモリ上のSQLiteを使用し、画像を扱うテストは専用ストレージを使用します。
+PHPのSQLite拡張は、このコマンドの実行時だけ読み込みます。
 
-検証結果、画面遷移、画像アップロード時の環境対応は、
-[Step7の確認記録](docs/step7_verification.md)に記載しています。
+2026-10-20の自動テストは、PHP 85件・682項目、JavaScript 4件すべて成功しています。
+2026-10-20～21の再確認では、実ブラウザでの操作は未実施です。
+過去の結果・HTTP確認・画面操作の記録は、[確認記録](docs/step7_verification.md)に記載しています。
 
 ## License
 
