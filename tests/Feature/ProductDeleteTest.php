@@ -158,7 +158,7 @@ class ProductDeleteTest extends DatabaseTestCase
             $delete_forms
         );
         $this->assertCount(2, $delete_forms[0]);
-        foreach ([$product, $other_product] as $row_number => $row_product) {
+        foreach ([$other_product, $product] as $row_number => $row_product) {
             $delete_form = $delete_forms[0][$row_number];
             $this->assertStringContainsString(
                 'action="' . route('products.destroy', $row_product->id) . '"',

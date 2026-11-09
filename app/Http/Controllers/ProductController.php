@@ -9,19 +9,34 @@ use App\Models\Company;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Throwable;
 
 class ProductController extends Controller
 {
-    public function index(ProductSearchRequest $request): View {
+    public function index(ProductSearchRequest $request): View|JsonResponse {
         $search_conditions = $request->validated();
-        $product_name = $search_conditions['product_name'] ?? null;
-        $company_id = isset($search_conditions['company_id']) ? (int) $search_conditions['company_id'] : null;
-        $products = Product::getProductList($product_name, $company_id);
+        $search_conditions['sort_by'] = $search_conditions['sort_by'] ?? 'id';
+        $search_conditions['sort_order'] = $search_conditions['sort_order'] ?? 'desc';
+        $products = Product::getProductList($search_conditions);
+        $search_conditions['page'] = $products->currentPage();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'html' => view('products.partials.results', compact('products', 'search_conditions'))->render(),
+                'url' => route('products.index', $search_conditions),
+                'sort_by' => $search_conditions['sort_by'],
+                'sort_order' => $search_conditions['sort_order'],
+                'page' => $products->currentPage(),
+                'total' => $products->total(),
+            ]);
+        }
+
         $companies = Company::getCompanyList();
 
-        return view('products.index', compact('products', 'companies', 'product_name', 'company_id'));
+        return view('products.index', compact('products', 'companies', 'search_conditions'));
     }
 
     public function show(int $product_id): View {
@@ -71,7 +86,7 @@ class ProductController extends Controller
         return redirect()->route('products.edit', $product_id)->with('status', '商品情報を更新しました。');
     }
 
-    public function destroy(int $product_id): RedirectResponse {
+    public function destroy(Request $request, int $product_id): RedirectResponse|JsonResponse {
         $product = Product::getProductDetail($product_id);
 
         try {
@@ -83,7 +98,18 @@ class ProductController extends Controller
                 $error_message = '売上データがある商品は削除できません。';
             }
 
+            if ($request->expectsJson()) {
+                $status_code = $exception instanceof QueryException
+                    && ($exception->errorInfo[0] ?? null) === '23000' ? 409 : 500;
+
+                return response()->json(['message' => $error_message], $status_code);
+            }
+
             return redirect()->route('products.index')->withErrors(['deletion' => $error_message]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => '商品を削除しました。', 'product_id' => $product_id]);
         }
 
         return redirect()->route('products.index')->with('status', '商品を削除しました。');

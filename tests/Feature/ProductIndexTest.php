@@ -56,7 +56,10 @@ class ProductIndexTest extends DatabaseTestCase
         $response->assertOk();
         $response->assertSee('メーカーBの商品');
         $response->assertDontSee('メーカーAの商品');
-        $response->assertSee('value="' . $second_company->id . '" selected', false);
+        $this->assertMatchesRegularExpression(
+            '/value="' . $second_company->id . '"\\s+selected/',
+            $response->getContent()
+        );
     }
 
     public function testNameAndManufacturerConditionsAreCombined(): void {
@@ -98,6 +101,7 @@ class ProductIndexTest extends DatabaseTestCase
             $product = $this->createProduct($company, '商品' . $product_number);
             $expected_product_ids[] = $product->id;
         }
+        $expected_product_ids = array_reverse($expected_product_ids);
         $this->actingAs($this->createUser());
 
         $response = $this->get(route('products.index'))->assertOk();

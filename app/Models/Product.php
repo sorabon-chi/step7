@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\OutOfStockException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,14 @@ use Throwable;
 class Product extends Model
 {
     use HasFactory;
+
+    public const SORT_COLUMNS = [
+        'id' => 'products.id',
+        'product_name' => 'products.product_name',
+        'price' => 'products.price',
+        'stock' => 'products.stock',
+        'company_name' => 'companies.company_name',
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -50,22 +59,62 @@ class Product extends Model
         return $this->hasMany(Sale::class);
     }
 
-    public static function getProductList(
-        ?string $product_name = null,
-        ?int $company_id = null
-    ): LengthAwarePaginator {
+    public static function getProductList(array $search_conditions = []): LengthAwarePaginator {
         $products_query = static::with('company');
+        $product_name = $search_conditions['product_name'] ?? null;
+        $company_id = $search_conditions['company_id'] ?? null;
 
         if ($product_name !== null && $product_name !== '') {
             $search_keyword = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $product_name);
-            $products_query->whereRaw("product_name LIKE ? ESCAPE '!'", ['%' . $search_keyword . '%']);
+            $products_query->whereRaw("products.product_name LIKE ? ESCAPE '!'", ['%' . $search_keyword . '%']);
         }
 
         if ($company_id !== null) {
-            $products_query->where('company_id', $company_id);
+            $products_query->where('products.company_id', $company_id);
         }
 
-        return $products_query->orderBy('id')->paginate(10)->withQueryString();
+        foreach (['price', 'stock'] as $range_column) {
+            if (isset($search_conditions[$range_column . '_min'])) {
+                $products_query->where('products.' . $range_column, '>=', $search_conditions[$range_column . '_min']);
+            }
+            if (isset($search_conditions[$range_column . '_max'])) {
+                $products_query->where('products.' . $range_column, '<=', $search_conditions[$range_column . '_max']);
+            }
+        }
+
+        $sort_by = $search_conditions['sort_by'] ?? 'id';
+        if (!isset(self::SORT_COLUMNS[$sort_by])) {
+            $sort_by = 'id';
+        }
+        $sort_order = ($search_conditions['sort_order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+        if ($sort_by === 'company_name') {
+            $products_query->leftJoin('companies', 'companies.id', '=', 'products.company_id');
+        }
+        $products_query->orderBy(self::SORT_COLUMNS[$sort_by], $sort_order);
+        if ($sort_by !== 'id') {
+            $products_query->orderBy('products.id', 'desc');
+        }
+
+        $page = max(1, (int) ($search_conditions['page'] ?? 1));
+        $products = $products_query->paginate(10, ['products.*'], 'page', $page);
+        if ($products->currentPage() > $products->lastPage()) {
+            $products = $products_query->paginate(10, ['products.*'], 'page', $products->lastPage());
+        }
+        unset($search_conditions['page']);
+
+        return $products->appends($search_conditions);
+    }
+
+    public static function lockForPurchase(int $product_id): self {
+        return static::query()->lockForUpdate()->findOrFail($product_id);
+    }
+
+    public function decreaseStock(): void {
+        $updated_rows = static::query()->whereKey($this->id)->where('stock', '>', 0)->decrement('stock');
+        if ($updated_rows !== 1) {
+            throw new OutOfStockException('在庫がありません。');
+        }
+        $this->stock--;
     }
 
     public static function getProductDetail(int $product_id): self {

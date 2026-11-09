@@ -1,6 +1,6 @@
-# Step7 商品管理システム
+# Step8 商品管理システム
 
-ユーザー登録・ログインと、商品の登録・検索・詳細表示・編集・削除、画像の保存に対応したLaravel 9の管理システムです。
+Laravel 9の商品管理システムです。ユーザー登録・認証、商品管理、Ajax検索・削除、範囲検索・並べ替え、購入APIに対応しています。
 
 ## 使用環境
 
@@ -30,7 +30,7 @@ MAMPのApacheとMySQLを起動し、次のURLを開いてログインします�
 
 ```powershell
 Set-Location C:\MAMP\htdocs
-git clone https://github.com/sorabon-chi/step7.git step7
+git clone --branch step8 https://github.com/sorabon-chi/step7.git step7
 Set-Location .\step7
 composer install
 npm.cmd ci

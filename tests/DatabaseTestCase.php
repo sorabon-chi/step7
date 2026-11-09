@@ -23,6 +23,7 @@ abstract class DatabaseTestCase extends TestCase
         ]);
         $this->app['db']->purge('sqlite');
         $this->withoutVite();
+        $this->app['config']->set('logging.default', 'null');
 
         $this->artisan('migrate', ['--database' => 'sqlite', '--force' => true])->assertExitCode(0);
     }

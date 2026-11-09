@@ -347,3 +347,24 @@
         margin-bottom: 16px;
     }
 }
+
+.product-list__range {
+    width: 150px;
+}
+
+.product-list__sort {
+    display: inline-block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.product-list__sort:hover,
+.product-list__sort:focus {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.product-list__status[hidden],
+.product-list__errors[hidden] {
+    display: none;
+}
